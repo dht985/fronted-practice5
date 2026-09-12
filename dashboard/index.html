@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图书馆数据看板</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="dashboard-header">
+    <h1 id="dashboard-title">图书馆数据看板</h1>
+    <p class="subtitle" id="dashboard-subtitle">正在准备数据…</p>
+  </header>
+
+  <main class="container">
+    <div id="status" class="status">数据加载中…</div>
+
+    <!-- 统计卡片：由 app.js 根据 books.json 动态渲染 -->
+    <section id="stats-section" class="stats-grid" hidden></section>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
