@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>美国电力供应数据看板</title>
+  <link href="libs/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .chart-box { position: relative; height: 380px; }
+    .chart-note { font-size: 12px; color: #6c757d; }
+    #status { display: none; }
+    .demo-bar { font-size: 13px; }
+    .stat-card { cursor: default; transition: box-shadow .15s ease; }
+  </style>
+</head>
+<body class="container py-4">
+  <header>
+    <h1 class="h3">美国电力供应数据看板（2015–2024）</h1>
+    <p class="text-muted mb-1" id="sub-title">数据来源：美国能源信息署（EIA）Electric Power Monthly</p>
+    <p class="text-muted small mb-0" id="unit-note">指标单位：十亿千瓦时（TWh）</p>
+  </header>
+
+  <!-- 状态提示：加载中 / 加载失败 / 空数据 -->
+  <p id="status" class="alert mt-3 mb-3"></p>
+
+  <!-- 状态演示工具条：用于课堂演示三种数据状态 -->
+  <div class="demo-bar d-flex flex-wrap align-items-center gap-2 mb-3 text-muted">
+    <span>状态演示：</span>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-demo="normal">正常数据</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-demo="empty">空数据</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-demo="broken">加载失败（404）</button>
+  </div>
+
+  <section class="row g-3 mb-4" id="cards"></section>
+
+  <section class="row g-3" id="charts-row">
+    <div class="col-lg-6">
+      <h2 class="h5">美国发电量结构（堆叠柱状图）</h2>
+      <p class="chart-note mb-1">单位：十亿千瓦时（TWh）｜数据来源：美国能源信息署（EIA）</p>
+      <div id="bar-chart" class="chart-box"></div>
+    </div>
+    <div class="col-lg-6">
+      <h2 class="h5">风电与太阳能发电量增长趋势（折线图）</h2>
+      <p class="chart-note mb-1">单位：十亿千瓦时（TWh）｜数据来源：美国能源信息署（EIA）</p>
+      <div class="chart-box"><canvas id="line-chart"></canvas></div>
+    </div>
+  </section>
+
+  <footer class="text-muted small mt-4 border-top pt-2">
+    数据来源说明：本看板数据根据美国能源信息署（EIA）Electric Power Monthly 公布的各电源净发电量整理，数值为约数，仅供教学演示使用。
+  </footer>
+
+  <script src="libs/jquery-3.7.1.min.js"></script>
+  <script src="libs/bootstrap.bundle.min.js"></script>
+  <script src="libs/echarts.min.js"></script>
+  <script src="libs/chart.umd.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
