@@ -69,6 +69,8 @@ function renderStats(stats) {
 
 // 使用 ECharts 渲染各类别月度借阅量柱状图
 function renderBarChart(data) {
+  // 必须先显示容器再初始化：display:none 时初始化会导致 ECharts 读不到容器宽度
+  barSectionEl.hidden = false;
   if (!barChart) {
     barChart = echarts.init(document.getElementById('bar-chart'));
   }
@@ -107,11 +109,12 @@ function renderBarChart(data) {
     })
   };
   barChart.setOption(option);
-  barSectionEl.hidden = false;
 }
 
 // 使用 Chart.js 渲染各类别借阅趋势折线图
 function renderLineChart(data) {
+  // 先显示容器再创建图表，保证画布能按容器实际尺寸初始化
+  lineSectionEl.hidden = false;
   if (!lineChart) {
     lineChart = new Chart(document.getElementById('line-chart'), {
       type: 'line',
@@ -153,7 +156,6 @@ function renderLineChart(data) {
       }
     });
   }
-  lineSectionEl.hidden = false;
 }
 
 // 窗口尺寸变化时让图表自适应
