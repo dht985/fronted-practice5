@@ -22,6 +22,12 @@ const COLORS = {
 
 const state = { data: null, filter: 'all' };
 
+// 趋势图只展示风电、太阳能；柱状图其余四类电源点击时需单独提示
+const LINE_SERIES_NAMES = ['风电', '太阳能'];
+
+// 当前联动高亮的电源名称；null 表示无联动
+let linkedName = null;
+
 let barChart = null;
 let lineChart = null;
 
@@ -60,6 +66,7 @@ const loadData = async (key = 'normal') => {
     // 空数据状态
     if (!Array.isArray(data.series) || data.series.length === 0) {
       state.data = null;
+      resetLink();
       $cards.empty();
       disposeCharts();
       showStatus('empty', '暂无数据：该数据集没有可展示的发电量记录。');
@@ -67,6 +74,7 @@ const loadData = async (key = 'normal') => {
     }
 
     state.data = data;
+    resetLink();                          // 重新加载数据时清掉旧联动
     $('#sub-title').text(data.title + ' · 数据来源：' + data.source);
     hideStatus();
     renderCards(data);
@@ -75,6 +83,7 @@ const loadData = async (key = 'normal') => {
   } catch (error) {
     // 加载失败状态（断网、404、JSON 解析错误都会进入这里）
     state.data = null;
+    resetLink();
     $cards.empty();
     disposeCharts();
     showStatus('error',
@@ -148,6 +157,10 @@ const getVisibleSeries = (data) => data.series.filter(
 const renderBarChart = (data) => {
   if (barChart === null) {
     barChart = echarts.init(document.querySelector('#bar-chart'));
+    // ECharts 事件：点中某段堆叠柱时，params.seriesName 给出电源名
+    barChart.on('click', 'series', (params) => {
+      toggleLink(params.seriesName);
+    });
   }
   const visible = getVisibleSeries(data);
   // 第二参 true：不与旧 option 合并，保证筛掉的系列彻底移除
@@ -175,6 +188,7 @@ const renderBarChart = (data) => {
       data: s.data
     }))
   }, true);
+  applyBarLink();   // 筛选会重建系列（索引变化），按名称重新施加高亮
 };
 
 // Chart.js 折线图：聚焦风电、太阳能两类新能源的增长速度
@@ -189,22 +203,41 @@ const renderLineChart = (data) => {
       labels: data.years,
       datasets: data.series
         .filter(s => focusNames.includes(s.name))
-        .map(s => ({
-          label: s.name,
-          data: s.data,
-          borderColor: COLORS[s.name],
-          backgroundColor: COLORS[s.name],
-          borderWidth: 2,
-          tension: 0.3,
-          pointRadius: 3,
-          pointHoverRadius: 6,
-          fill: false
-        }))
+        .map(s => {
+          const color = COLORS[s.name];
+          return {
+            label: s.name,
+            data: s.data,
+            borderColor: color,
+            backgroundColor: color,
+            pointBackgroundColor: color,
+            pointBorderColor: color,
+            borderWidth: 2,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            fill: false,
+            // 记住普通态样式，联动取消时还原
+            _base: { color: color, borderWidth: 2, pointRadius: 3 }
+          };
+        })
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      // Chart.js 事件：点中折线上的数据点时取数据集名，反向联动柱状图。
+      // 注意 tooltip 用的是 index 模式（同一年份两根线一起提示），
+      // 但联动选择必须按“光标实际点中的那个点”，所以这里单独用
+      // nearest + intersect:true 重新命中，否则 elements[0] 恒为第一条线（风电）。
+      onClick: (event, elements, chart) => {
+        const pts = chart.getElementsAtEventForMode(
+          event, 'nearest', { intersect: true }, false
+        );
+        if (pts.length > 0) {
+          toggleLink(chart.data.datasets[pts[0].datasetIndex].label);
+        }
+      },
       plugins: {
         title: {
           display: true,
@@ -229,6 +262,72 @@ window.addEventListener('resize', () => {
     barChart.resize();
   }
 });
+
+// ============ 两图联动：柱状图（ECharts）↔ 趋势图（Chart.js）============
+const withAlpha = (hex, alpha) => {
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ','
+    + (n & 255) + ',' + alpha + ')';
+};
+
+// ECharts 侧：按名称 highlight 当前电源（筛选后系列索引会变，所以每次现查）
+const applyBarLink = () => {
+  if (barChart === null) return;
+  const series = barChart.getOption().series;
+  series.forEach((s, i) => {
+    barChart.dispatchAction({ type: 'downplay', seriesIndex: i });
+  });
+  if (linkedName !== null) {
+    const idx = series.findIndex(s => s.name === linkedName);
+    if (idx >= 0) {
+      barChart.dispatchAction({ type: 'highlight', seriesIndex: idx });
+    }
+  }
+};
+
+// Chart.js 侧：仅当联动电源在趋势图中时才强调+淡化，否则折线图保持原样
+const applyLineLink = () => {
+  if (lineChart === null) return;
+  const target = LINE_SERIES_NAMES.includes(linkedName) ? linkedName : null;
+  lineChart.data.datasets.forEach(ds => {
+    const base = ds._base;
+    const active = ds.label === target;
+    const dimmed = target !== null && !active;
+    const color = dimmed ? withAlpha(base.color, 0.15) : base.color;
+    ds.borderColor = color;
+    ds.backgroundColor = color;
+    ds.pointBackgroundColor = color;
+    ds.pointBorderColor = color;
+    ds.borderWidth = active ? 4 : base.borderWidth;
+    ds.pointRadius = active ? 6 : (dimmed ? 2 : base.pointRadius);
+  });
+  lineChart.update('none');
+};
+
+const syncLinkHint = () => {
+  if (linkedName === null) {
+    $('#link-hint').text('联动提示：点击堆叠柱中的某类电源、或折线图上的数据点，可在两张图之间联动高亮；再次点击取消。');
+  } else if (LINE_SERIES_NAMES.includes(linkedName)) {
+    $('#link-hint').text('已联动高亮：【' + linkedName
+      + '】——柱状图中该电源层与趋势图中该折线均已强调，其余系列淡化，再次点击取消。');
+  } else {
+    $('#link-hint').text('已在柱状图高亮【' + linkedName
+      + '】；趋势图仅展示风电、太阳能，不含该电源。点击风电或太阳能柱体可联动趋势图。');
+  }
+};
+
+const resetLink = () => {
+  linkedName = null;
+  syncLinkHint();
+};
+
+// 联动总开关：同名再点一次取消
+const toggleLink = (name) => {
+  linkedName = linkedName === name ? null : name;
+  applyBarLink();
+  applyLineLink();
+  syncLinkHint();
+};
 
 // 电源类型筛选（jQuery 事件委托）：切换按钮高亮并按化石/非化石重绘柱状图
 $('#filter-bar').on('click', 'button[data-filter]', function () {
