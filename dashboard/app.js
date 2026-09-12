@@ -17,8 +17,7 @@ const loadData = async () => {
     $('#status').hide();
     renderCards(data);
     renderBarChart(data);
-    // 第三步实现 Chart.js 折线图后，再取消注释
-    // renderLineChart(data);
+    renderLineChart(data);
   } catch (error) {
     $('#status').text('加载失败：' + error.message).show();
   }
@@ -61,5 +60,37 @@ const renderBarChart = (data) => {
     }))
   });
 };
+
+let lineChart = null;
+
+const renderLineChart = (data) => {
+  if (lineChart !== null) {
+    lineChart.destroy();               // 防重复初始化
+  }
+  const ctx = document.querySelector('#line-chart');
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.months,
+      datasets: data.series.map(s => ({
+        label: s.category,
+        data: s.counts,
+        borderWidth: 1
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: { display: true, text: '借阅趋势（单位：册）' }
+      }
+    }
+  });
+};
+
+window.addEventListener('resize', () => {
+  if (barChart) barChart.resize();
+  // Chart.js响应式默认自动处理，无需手动
+});
 
 loadData();
