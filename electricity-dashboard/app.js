@@ -23,6 +23,7 @@ const COLORS = {
 const state = { data: null };
 
 let barChart = null;
+let lineChart = null;
 
 const $status = $('#status');
 const $cards = $('#cards');
@@ -70,6 +71,7 @@ const loadData = async (key = 'normal') => {
     hideStatus();
     renderCards(data);
     renderBarChart(data);
+    renderLineChart(data);
   } catch (error) {
     // 加载失败状态（断网、404、JSON 解析错误都会进入这里）
     state.data = null;
@@ -131,6 +133,10 @@ const disposeCharts = () => {
     barChart.dispose();
     barChart = null;
   }
+  if (lineChart !== null) {
+    lineChart.destroy();
+    lineChart = null;
+  }
 };
 
 // ECharts 堆叠柱状图：同时表达每年发电总量与电源构成
@@ -163,6 +169,59 @@ const renderBarChart = (data) => {
     }))
   });
 };
+
+// Chart.js 折线图：聚焦风电、太阳能两类新能源的增长速度
+const renderLineChart = (data) => {
+  if (lineChart !== null) {
+    lineChart.destroy();
+  }
+  const focusNames = ['风电', '太阳能'];
+  lineChart = new Chart(document.querySelector('#line-chart'), {
+    type: 'line',
+    data: {
+      labels: data.years,
+      datasets: data.series
+        .filter(s => focusNames.includes(s.name))
+        .map(s => ({
+          label: s.name,
+          data: s.data,
+          borderColor: COLORS[s.name],
+          backgroundColor: COLORS[s.name],
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          fill: false
+        }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        title: {
+          display: true,
+          text: '风电与太阳能发电量增长趋势（单位：TWh，来源：EIA）'
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + '：' + ctx.parsed.y + ' TWh'
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: data.unit } }
+      }
+    }
+  });
+};
+
+// 窗口拉伸：ECharts 需手动 resize；Chart.js 由内置 ResizeObserver 自动处理
+window.addEventListener('resize', () => {
+  if (barChart !== null) {
+    barChart.resize();
+  }
+});
 
 // 状态演示按钮（事件委托）
 $('.demo-bar').on('click', 'button[data-demo]', function () {
