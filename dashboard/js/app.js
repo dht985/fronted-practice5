@@ -1,4 +1,4 @@
-/* 图书馆数据看板：fetch 加载 JSON 数据，渲染统计卡片、ECharts 柱状图 */
+/* 图书馆数据看板：fetch 加载 JSON 数据，渲染统计卡片、ECharts 柱状图、Chart.js 折线图 */
 
 const DATA_URL = 'data/books.json';
 
@@ -7,8 +7,12 @@ const titleEl = document.getElementById('dashboard-title');
 const subtitleEl = document.getElementById('dashboard-subtitle');
 const statsSectionEl = document.getElementById('stats-section');
 const barSectionEl = document.getElementById('bar-section');
+const lineSectionEl = document.getElementById('line-section');
 
 let barChart = null;
+let lineChart = null;
+
+const CHART_COLORS = ['#4a6fa5', '#7fae6d', '#e0a458'];
 
 // 加载数据
 async function loadData() {
@@ -69,7 +73,7 @@ function renderBarChart(data) {
     barChart = echarts.init(document.getElementById('bar-chart'));
   }
   const option = {
-    color: ['#4a6fa5', '#7fae6d', '#e0a458'],
+    color: CHART_COLORS,
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' }
@@ -106,6 +110,52 @@ function renderBarChart(data) {
   barSectionEl.hidden = false;
 }
 
+// 使用 Chart.js 渲染各类别借阅趋势折线图
+function renderLineChart(data) {
+  if (!lineChart) {
+    lineChart = new Chart(document.getElementById('line-chart'), {
+      type: 'line',
+      data: {
+        labels: data.months,
+        datasets: data.series.map(function (s, i) {
+          return {
+            label: s.category,
+            data: s.counts,
+            borderColor: CHART_COLORS[i % CHART_COLORS.length],
+            backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2
+          };
+        })
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                return ctx.dataset.label + '：' + ctx.parsed.y + ' 册';
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: '借阅量（册）' }
+          }
+        }
+      }
+    });
+  }
+  lineSectionEl.hidden = false;
+}
+
 // 窗口尺寸变化时让图表自适应
 window.addEventListener('resize', function () {
   if (barChart) {
@@ -120,6 +170,7 @@ function render(data) {
   subtitleEl.textContent = '共 ' + data.months.length + ' 个月 · ' + data.series.length + ' 个图书分类';
   renderStats(calcStats(data));
   renderBarChart(data);
+  renderLineChart(data);
   statusEl.hidden = true;
   statsSectionEl.hidden = false;
 }
