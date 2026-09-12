@@ -17,8 +17,15 @@
 
     <!-- 统计卡片：由 app.js 根据 books.json 动态渲染 -->
     <section id="stats-section" class="stats-grid" hidden></section>
+
+    <!-- 各类别月度借阅量柱状图（ECharts） -->
+    <section id="bar-section" class="chart-card" hidden>
+      <h2 class="chart-title">各类别月度借阅量（柱状图）</h2>
+      <div id="bar-chart" class="chart-box"></div>
+    </section>
   </main>
 
+  <script src="lib/echarts.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

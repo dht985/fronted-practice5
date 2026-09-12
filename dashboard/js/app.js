@@ -1,4 +1,4 @@
-/* 图书馆数据看板：fetch 加载 JSON 数据并渲染统计卡片 */
+/* 图书馆数据看板：fetch 加载 JSON 数据，渲染统计卡片、ECharts 柱状图 */
 
 const DATA_URL = 'data/books.json';
 
@@ -6,6 +6,9 @@ const statusEl = document.getElementById('status');
 const titleEl = document.getElementById('dashboard-title');
 const subtitleEl = document.getElementById('dashboard-subtitle');
 const statsSectionEl = document.getElementById('stats-section');
+const barSectionEl = document.getElementById('bar-section');
+
+let barChart = null;
 
 // 加载数据
 async function loadData() {
@@ -60,12 +63,63 @@ function renderStats(stats) {
   statsSectionEl.innerHTML = html;
 }
 
+// 使用 ECharts 渲染各类别月度借阅量柱状图
+function renderBarChart(data) {
+  if (!barChart) {
+    barChart = echarts.init(document.getElementById('bar-chart'));
+  }
+  const option = {
+    color: ['#4a6fa5', '#7fae6d', '#e0a458'],
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
+    },
+    legend: {
+      top: 0,
+      data: data.series.map(function (s) { return s.category; })
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: 48,
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: data.months
+    },
+    yAxis: {
+      type: 'value',
+      name: '借阅量（册）'
+    },
+    series: data.series.map(function (s) {
+      return {
+        name: s.category,
+        type: 'bar',
+        data: s.counts,
+        barMaxWidth: 36
+      };
+    })
+  };
+  barChart.setOption(option);
+  barSectionEl.hidden = false;
+}
+
+// 窗口尺寸变化时让图表自适应
+window.addEventListener('resize', function () {
+  if (barChart) {
+    barChart.resize();
+  }
+});
+
 // 整体渲染
 function render(data) {
   console.log('加载到的数据：', data);
   titleEl.textContent = data.title;
   subtitleEl.textContent = '共 ' + data.months.length + ' 个月 · ' + data.series.length + ' 个图书分类';
   renderStats(calcStats(data));
+  renderBarChart(data);
   statusEl.hidden = true;
   statsSectionEl.hidden = false;
 }
