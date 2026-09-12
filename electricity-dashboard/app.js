@@ -10,7 +10,19 @@ const DATA_FILES = {
 // 本地 fetch 很快，加一个短延时让“加载中”状态在课堂演示时肉眼可见
 const LOAD_DELAY = 600;
 
+// 各电源统一配色（两张图表共用，保证视觉口径一致）
+const COLORS = {
+  '煤炭': '#596275',
+  '天然气': '#e07b39',
+  '核电': '#4a6fa5',
+  '水电': '#3fa796',
+  '风电': '#7fae6d',
+  '太阳能': '#e8b84b'
+};
+
 const state = { data: null };
+
+let barChart = null;
 
 const $status = $('#status');
 const $cards = $('#cards');
@@ -48,6 +60,7 @@ const loadData = async (key = 'normal') => {
     if (!Array.isArray(data.series) || data.series.length === 0) {
       state.data = null;
       $cards.empty();
+      disposeCharts();
       showStatus('empty', '暂无数据：该数据集没有可展示的发电量记录。');
       return;
     }
@@ -56,10 +69,12 @@ const loadData = async (key = 'normal') => {
     $('#sub-title').text(data.title + ' · 数据来源：' + data.source);
     hideStatus();
     renderCards(data);
+    renderBarChart(data);
   } catch (error) {
     // 加载失败状态（断网、404、JSON 解析错误都会进入这里）
     state.data = null;
     $cards.empty();
+    disposeCharts();
     showStatus('error',
       '数据加载失败：<strong>' + error.message + '</strong>。<br>'
       + '请检查网络或本地服务是否正常（需通过 http:// 而非 file:// 访问）。'
@@ -108,6 +123,45 @@ const renderCards = (data) => {
       </div>
     </div>
   `).join(''));
+};
+
+// 空数据/失败时销毁已有图表实例，避免残留旧图形
+const disposeCharts = () => {
+  if (barChart !== null) {
+    barChart.dispose();
+    barChart = null;
+  }
+};
+
+// ECharts 堆叠柱状图：同时表达每年发电总量与电源构成
+const renderBarChart = (data) => {
+  if (barChart === null) {
+    barChart = echarts.init(document.querySelector('#bar-chart'));
+  }
+  barChart.setOption({
+    color: data.series.map(s => COLORS[s.name]),
+    title: {
+      text: '美国发电量结构',
+      subtext: '单位：' + data.unit + '｜数据来源：' + data.source,
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      valueFormatter: v => v + ' TWh'
+    },
+    legend: { bottom: 0, type: 'scroll' },
+    grid: { left: 50, right: 20, top: 70, bottom: 50 },
+    xAxis: { type: 'category', data: data.years },
+    yAxis: { type: 'value', name: data.unit },
+    series: data.series.map(s => ({
+      name: s.name,
+      type: 'bar',
+      stack: 'total',
+      emphasis: { focus: 'series' },
+      data: s.data
+    }))
+  });
 };
 
 // 状态演示按钮（事件委托）
