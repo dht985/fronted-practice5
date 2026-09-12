@@ -93,4 +93,9 @@ window.addEventListener('resize', () => {
   // Chart.js响应式默认自动处理，无需手动
 });
 
+// 卡片点击高亮：事件委托绑在静态父容器 #cards 上，动态生成的卡片也能响应
+$('#cards').on('click', '.card', function () {    // 事件委托：jQuery内置写法
+  $(this).toggleClass('border-primary shadow');
+});
+
 loadData();
