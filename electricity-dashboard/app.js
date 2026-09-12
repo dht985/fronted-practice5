@@ -20,7 +20,7 @@ const COLORS = {
   '太阳能': '#e8b84b'
 };
 
-const state = { data: null };
+const state = { data: null, filter: 'all' };
 
 let barChart = null;
 let lineChart = null;
@@ -139,13 +139,20 @@ const disposeCharts = () => {
   }
 };
 
+// 按当前筛选条件取出要展示的电源系列
+const getVisibleSeries = (data) => data.series.filter(
+  s => state.filter === 'all' || s.group === state.filter
+);
+
 // ECharts 堆叠柱状图：同时表达每年发电总量与电源构成
 const renderBarChart = (data) => {
   if (barChart === null) {
     barChart = echarts.init(document.querySelector('#bar-chart'));
   }
+  const visible = getVisibleSeries(data);
+  // 第二参 true：不与旧 option 合并，保证筛掉的系列彻底移除
   barChart.setOption({
-    color: data.series.map(s => COLORS[s.name]),
+    color: visible.map(s => COLORS[s.name]),
     title: {
       text: '美国发电量结构',
       subtext: '单位：' + data.unit + '｜数据来源：' + data.source,
@@ -160,14 +167,14 @@ const renderBarChart = (data) => {
     grid: { left: 50, right: 20, top: 70, bottom: 50 },
     xAxis: { type: 'category', data: data.years },
     yAxis: { type: 'value', name: data.unit },
-    series: data.series.map(s => ({
+    series: visible.map(s => ({
       name: s.name,
       type: 'bar',
       stack: 'total',
       emphasis: { focus: 'series' },
       data: s.data
     }))
-  });
+  }, true);
 };
 
 // Chart.js 折线图：聚焦风电、太阳能两类新能源的增长速度
@@ -220,6 +227,20 @@ const renderLineChart = (data) => {
 window.addEventListener('resize', () => {
   if (barChart !== null) {
     barChart.resize();
+  }
+});
+
+// 电源类型筛选（jQuery 事件委托）：切换按钮高亮并按化石/非化石重绘柱状图
+$('#filter-bar').on('click', 'button[data-filter]', function () {
+  const $btn = $(this);
+  state.filter = $btn.data('filter');
+  // 当前按钮变为实心高亮，其余恢复描边态
+  $('#filter-bar button')
+    .removeClass('btn-primary active')
+    .addClass('btn-outline-primary');
+  $btn.removeClass('btn-outline-primary').addClass('btn-primary active');
+  if (state.data !== null) {
+    renderBarChart(state.data);
   }
 });
 

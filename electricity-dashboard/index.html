@@ -37,6 +37,11 @@
     <div class="col-lg-6">
       <h2 class="h5">美国发电量结构（堆叠柱状图）</h2>
       <p class="chart-note mb-1">单位：十亿千瓦时（TWh）｜数据来源：美国能源信息署（EIA）</p>
+      <div id="filter-bar" class="btn-group btn-group-sm mb-2" role="group" aria-label="电源类型筛选">
+        <button type="button" class="btn btn-primary active" data-filter="all">全部电源</button>
+        <button type="button" class="btn btn-outline-primary" data-filter="化石能源">化石能源</button>
+        <button type="button" class="btn btn-outline-primary" data-filter="非化石能源">非化石能源</button>
+      </div>
       <div id="bar-chart" class="chart-box"></div>
     </div>
     <div class="col-lg-6">
